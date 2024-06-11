@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maze-O-Mania</title>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+  <style>
+    /* Add custom styles here */
+    body {
+      height: 100vh;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: sans-serif;
+      background-color: #fff; /* Light Mode Background */
+      color: #333;          /* Light Mode Text Color */
+      transition: background-color 0.3s ease, color 0.3s ease; /* Smooth transition */
+    }
+
+    body.dark-mode {
+      background-color: #111; /* Dark Mode Background */
+      color: #fff;           /* Dark Mode Text Color */
+    }
+
+    #maze-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    #maze {
+      border-collapse: collapse;
+      margin-bottom: 10px;
+    }
+
+    .cell {
+      width: 20px;
+      height: 20px;
+      border: 1px solid black;
+    }
+
+    #entry-point {
+      background-color: red;
+      border-radius: 50%; /* Circular shape for entry point */
+    }
+
+    .exit-point {
+      background-color: blue;
+      border-radius: 50%; /* Circular shape for exit point */
+    }
+
+    .wall {
+      background-color: #4CAF50;
+      border-radius: 0; /* Reset border-radius for walls */
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.5); /* Add shadow effect */
+    }
+
+    /* Button Styling */
+    button, select {
+      background-color: #0a6af9; 
+      color: white;
+      padding: 10px 20px;
+      text-align: center;
+      border: none;
+      margin: 4px 2px;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+
+    button:hover, select:hover {
+      background-color: #1d68e9; 
+    }
+
+    .button-container {
+      display: flex;
+      justify-content: center;
+    }
+
+    #timer {
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="maze-container">
+    <h1>Maze-O-Mania</h1>
+    <table id="maze"></table>
+    <div id="timer">Timer: 0 seconds</div>
+    <div class="button-container">
+      <select id="difficulty">
+        <option value="easy">Easy</option>
+        <option value="medium">Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+      <button onclick="generateMaze()">Generate Maze</button>
+      <button onclick="toggleDarkMode()">Dark Mode</button>
+    </div>
+  </div>
+
+  <script>
+    let mazeWidth, mazeHeight, mazeGrid, entryPoint, exitPoint, timerInterval, startTime, movesCount;
+
+    function adjustMazeSize() {
+      const availableHeight = window.innerHeight * 0.6;
+      const availableWidth = window.innerWidth * 0.6;
+      const smallerDimension = Math.min(availableHeight, availableWidth);
+      const cellSize = 20; // You can adjust this for larger/smaller mazes
+      mazeWidth = Math.floor(smallerDimension / cellSize);
+      mazeHeight = Math.floor(smallerDimension / cellSize);
+    }
+
+    function toggleDarkMode() {
+      document.body.classList.toggle("dark-mode");
+    }
+
+    function generateMaze() {
+      // Clear previous maze
+      document.getElementById('maze').innerHTML = '';
+      movesCount = 0;
+
+      adjustMazeSize();
+
+      // Generate maze grid
+      mazeGrid = [];
+      for (let i = 0; i < mazeHeight; i++) {
+        mazeGrid[i] = [];
+        for (let j = 0; j < mazeWidth; j++) {
+          mazeGrid[i][j] = Math.random() < 0.3 ? 1 : 0; // 1 represents wall, 0 represents path
+        }
+      }
+
+      // Set entry and exit points
+      entryPoint = { row: 0, col: 0 };
+      exitPoint = { row: mazeHeight - 1, col: mazeWidth - 1 };
+
+      // Display maze on UI
+      const maze = document.getElementById('maze');
+      for (let i = 0; i < mazeHeight; i++) {
+        const row = maze.insertRow();
+        for (let j = 0; j < mazeWidth; j++) {
+          const cell = row.insertCell();
+          cell.className = mazeGrid[i][j] ? 'cell wall' : 'cell';
+          if (i === entryPoint.row && j === entryPoint.col) {
+            cell.id = 'entry-point';
+          }
+          if (i === exitPoint.row && j === exitPoint.col) {
+            cell.classList.add('exit-point');
+          }
+        }
+      }
+
+      // Start the timer
+      startTimer();
+    }
+
+    function startTimer() {
+      startTime = Date.now();
+      timerInterval = setInterval(updateTimer, 1000);
+    }
+
+    function stopTimer() {
+      clearInterval(timerInterval);
+    }
+
+    function updateTimer() {
+      const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+      document.getElementById('timer').innerText = 'Timer: ' + elapsedTime + ' seconds';
+    }
+
+    window.addEventListener('keydown', function(event) {
+  const key = event.key;
+  const currentCell = document.getElementById('entry-point');
+  let nextCell;
+  
+  switch (key) {
+    case 'ArrowUp':
+      nextCell = currentCell.parentNode.previousElementSibling ? currentCell.parentNode.previousElementSibling.cells[currentCell.cellIndex] : null;
+      break;
+    case 'ArrowDown':
+      nextCell = currentCell.parentNode.nextElementSibling ? currentCell.parentNode.nextElementSibling.cells[currentCell.cellIndex] : null;
+      break;
+    case 'ArrowLeft':
+      nextCell = currentCell.previousElementSibling;
+      break;
+    case 'ArrowRight':
+      nextCell = currentCell.nextElementSibling;
+      break;
+  }
+
+  if (nextCell && !nextCell.classList.contains('wall')) {
+    currentCell.removeAttribute('id');
+    nextCell.id = 'entry-point';
+    drawPath(currentCell, nextCell);
+    movesCount++;
+    if (nextCell.classList.contains('exit-point')) {
+      stopTimer();
+      alert('Congratulations! You completed the maze in ' + movesCount + ' moves and ' + document.getElementById('timer').innerText);
+    }
+  }
+
+  event.preventDefault();
+});
+
+
+  </script>
+</body>
+</html>
